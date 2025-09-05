@@ -1,0 +1,73 @@
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mudravani - Model</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='model.css') }}" />
+    <!-- Remixicons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
+  </head>
+  <body>
+    <header>
+      <h2 id="main-logo">Mudravani</h2>
+      <a href="#live-model" id="model-nav-tag">Testing Model</a>
+      <div class="socials">
+        <ul>
+          <li><a href="" target="_blank"><i class="ri-github-fill"></i></a></li>
+          <li><a href="#"><i class="ri-twitter-x-fill"></i></a></li>
+          <div id="vertical-line"></div>
+          <li><a id="dark-theme"><i class="ri-sun-line"></i></a></li>
+          <li><a href="#"><i class="ri-translate-2"></i></a></li>
+          <li><a href="#">Log in</a></li>
+        </ul>
+      </div>
+    </header>
+
+    <main>
+      <span>Welcome to Mudravani's sign detection model. The work here is under developmental stage.</span>
+
+      <div class="live-model" id="live-model">
+        <h2>Mudravani - Test Phase Model</h2>
+        <img
+          id="cam-feed"
+          src="{{ url_for('video_feed') }}"
+          width="640"
+          height="480"
+          alt="Webcam stream will appear here"
+          style="border: 2px solid #ccc;"
+          onerror="this.onerror=null; this.src='https://via.placeholder.com/640x480?text=Stream+not+available';"
+        />
+
+        <div
+          id="sentence-box"
+          style="margin-top: 15px; font-size: 24px; font-weight: bold; color: #333;"
+        >
+          Detected letter will appear here.
+        </div>
+
+          <script>
+          async function fetchLetter() {
+            try {
+              const response = await fetch('/get_letter');
+              const data = await response.json();
+              document.getElementById('sentence-box').textContent = data.letter || 'No detection';
+            } catch (err) {
+              document.getElementById('sentence-box').textContent = 'Error fetching letter';
+            }
+          }
+          setInterval(fetchLetter, 1000); // Poll every second
+          fetchLetter(); // Initial load
+          </script>
+        <span>Try to make different signs from your hands.</span>
+      </div>
+
+      <hr />
+      <div class="info"></div>
+      <hr />
+    </main>
+
+    <script src="{{ url_for('static', filename='model.js') }}"></script>
+
+  </body>
+  </html>
