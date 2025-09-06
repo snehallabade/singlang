@@ -36,9 +36,10 @@ except Exception as e:
 # Global variables
 cap = None
 detector = None
-detected_letter = "No detection"  # Initialize with fallback text
-last_detection_time = 0
+detected_letters = {"Left": "No detection", "Right": "No detection"}  # Track both hands
+last_detection_time = {"Left": 0, "Right": 0}  # Track timing for both hands
 DETECTION_COOLDOWN = 1.0  # seconds between detections
+current_sentence = []  # Track the sentence being formed
 
 # Initialize Flask app
 app = Flask(__name__, 
@@ -70,7 +71,7 @@ def initialize_detector():
     """Initialize the hand detector"""
     global detector
     try:
-        detector = HandDetector(detectionCon=0.8, maxHands=1)
+        detector = HandDetector(detectionCon=0.8, maxHands=2)  # Allow detection of both hands
         print("Hand detector initialized")
         return True
     except Exception as e:
@@ -79,39 +80,45 @@ def initialize_detector():
 
 def process_frame(frame):
     """Process a single frame to detect hands and predict signs"""
-    global detector, detected_letter, last_detection_time
+    global detected_letters, last_detection_time, current_sentence
     
     try:
-        # Find hands in the frame
-        hands, frame = detector.findHands(frame)
+        # Get current time for detection cooldown
+        current_time = time()
         
-        if hands:
-            # Process detected hands
-            hand_crops, bboxes, processed_frame = detect_and_crop(frame)
+        # Detect and crop hands
+        hand_crops, bboxes, frame, hand_types = detect_and_crop(frame)
+        
+        # Clear buffers for hands that are not detected
+        detected_hand_types = set(hand_types)
+        if "Left" not in detected_hand_types:
+            clear_buffer("Left")
+        if "Right" not in detected_hand_types:
+            clear_buffer("Right")
+        
+        # Process each detected hand
+        for hand_img, bbox, hand_type in zip(hand_crops, bboxes, hand_types):
+            # Get prediction for each hand
+            predicted_letter, confidence = predict_sign(hand_img, hand_type)
             
-            if hand_crops:
-                # Take the first hand crop for prediction
-                hand_crop = hand_crops[0]
-                
-                # Get prediction
-                predicted_letter, confidence = predict_sign(hand_crop)
-                current_time = time()
-                
-                # Only update detection if enough time has passed and we have a valid prediction
-                if predicted_letter and current_time - last_detection_time >= DETECTION_COOLDOWN:
-                    detected_letter = predicted_letter
-                    last_detection_time = current_time
-                
-                # Draw prediction and confidence on frame
-                bbox = bboxes[0]
-                x, y = bbox[0], bbox[1]
-                cv2.putText(frame, f"Prediction: {detected_letter}", (x-10, y-10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-                cv2.putText(frame, f"Conf: {confidence:.2f}", (x-10, y-30),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        else:
-            # Clear buffer when no hand is detected
-            clear_buffer()
+            # Only update detection if enough time has passed and we have a valid prediction
+            if predicted_letter and current_time - last_detection_time[hand_type] >= DETECTION_COOLDOWN:
+                detected_letters[hand_type] = predicted_letter
+                last_detection_time[hand_type] = current_time
+            
+            # Draw prediction and confidence on frame
+            x, y = bbox[0], bbox[1]
+            color = (0, 255, 0) if hand_type == "Right" else (0, 0, 255)  # Green for right, Red for left
+            cv2.putText(frame, f"{hand_type}: {detected_letters[hand_type]}", (x-10, y-10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2)
+            cv2.putText(frame, f"Conf: {confidence:.2f}", (x-10, y-30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        
+        # Draw current sentence at the top of the frame
+        if current_sentence:
+            sentence_text = ' '.join(current_sentence)
+            cv2.putText(frame, sentence_text, (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
         
         return frame
         
@@ -162,11 +169,40 @@ def video_feed():
     return Response(generate_frames(),
                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/get_letter')
-def get_letter():
-    """Get the currently detected letter"""
-    global detected_letter
-    return jsonify({'letter': detected_letter})
+@app.route('/get_letters')
+def get_letters():
+    """Get the currently detected letters from both hands"""
+    global detected_letters, current_sentence
+    return jsonify({
+        'left_hand': detected_letters['Left'],
+        'right_hand': detected_letters['Right'],
+        'current_sentence': ' '.join(current_sentence)
+    })
+
+@app.route('/update_sentence', methods=['POST'])
+def update_sentence():
+    """Update the current sentence based on client request"""
+    global current_sentence
+    data = request.json
+    action = data.get('action')
+    
+    if action == 'add_letter':
+        letter = data.get('letter')
+        if letter:
+            if not current_sentence:
+                current_sentence = [letter]
+            else:
+                current_sentence.append(letter)
+    elif action == 'add_space':
+        if current_sentence:
+            current_sentence.append(' ')
+    elif action == 'backspace':
+        if current_sentence:
+            current_sentence.pop()
+    elif action == 'clear':
+        current_sentence = []
+    
+    return jsonify({'success': True, 'sentence': ' '.join(current_sentence)})
 
 def cleanup():
     """Cleanup resources on shutdown"""

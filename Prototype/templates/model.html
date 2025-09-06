@@ -1,28 +1,28 @@
   <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mudravani - Model</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='model.css') }}" />
-    <!-- Remixicons CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
-  </head>
-  <body>
-    <header>
-      <h2 id="main-logo">Mudravani</h2>
-      <a href="#live-model" id="model-nav-tag">Testing Model</a>
-      <div class="socials">
-        <ul>
-          <li><a href="" target="_blank"><i class="ri-github-fill"></i></a></li>
-          <li><a href="#"><i class="ri-twitter-x-fill"></i></a></li>
-          <div id="vertical-line"></div>
-          <li><a id="dark-theme"><i class="ri-sun-line"></i></a></li>
-          <li><a href="#"><i class="ri-translate-2"></i></a></li>
-          <li><a href="#">Log in</a></li>
-        </ul>
-      </div>
-    </header>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mudravani - Model</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='model.css') }}" />
+  <!-- Remixicons CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <h2 id="main-logo">Mudravani</h2>
+    <a href="#live-model" id="model-nav-tag">Testing Model</a>
+    <div class="socials">
+      <ul>
+        <li><a href="" target="_blank"><i class="ri-github-fill"></i></a></li>
+        <li><a href="#"><i class="ri-twitter-x-fill"></i></a></li>
+        <div id="vertical-line"></div>
+        <li><a id="dark-theme"><i class="ri-sun-line"></i></a></li>
+        <li><a href="#"><i class="ri-translate-2"></i></a></li>
+        <li><a href="#">Log in</a></li>
+      </ul>
+    </div>
+  </header>
 
     <main>
       <span>Welcome to Mudravani's sign detection model. The work here is under developmental stage.</span>
@@ -39,27 +39,76 @@
           onerror="this.onerror=null; this.src='https://via.placeholder.com/640x480?text=Stream+not+available';"
         />
 
-        <div
-          id="sentence-box"
-          style="margin-top: 15px; font-size: 24px; font-weight: bold; color: #333;"
-        >
-          Detected letter will appear here.
+        <div class="detection-boxes" style="display: flex; justify-content: space-around; margin: 15px 0;">
+          <div id="left-hand-box" style="font-size: 20px; font-weight: bold; color: #ff0000;">
+            Left Hand: No detection
+          </div>
+          <div id="right-hand-box" style="font-size: 20px; font-weight: bold; color: #00ff00;">
+            Right Hand: No detection
+          </div>
         </div>
 
-          <script>
-          async function fetchLetter() {
-            try {
-              const response = await fetch('/get_letter');
-              const data = await response.json();
-              document.getElementById('sentence-box').textContent = data.letter || 'No detection';
-            } catch (err) {
-              document.getElementById('sentence-box').textContent = 'Error fetching letter';
+        <div id="sentence-box" style="margin: 15px 0; font-size: 24px; font-weight: bold; color: #333;">
+          <div id="current-sentence">Current Sentence: </div>
+          <div class="sentence-controls" style="margin-top: 10px;">
+            <button onclick="updateSentence('add_space')" style="margin: 0 5px;">Add Space</button>
+            <button onclick="updateSentence('backspace')" style="margin: 0 5px;">Backspace</button>
+            <button onclick="updateSentence('clear')" style="margin: 0 5px;">Clear</button>
+          </div>
+        </div>
+
+        <script>
+        let lastLeftHand = '';
+        let lastRightHand = '';
+
+        async function fetchDetections() {
+          try {
+            const response = await fetch('/get_letters');
+            const data = await response.json();
+            
+            // Update hand detection displays
+            document.getElementById('left-hand-box').textContent = `Left Hand: ${data.left_hand}`;
+            document.getElementById('right-hand-box').textContent = `Right Hand: ${data.right_hand}`;
+            
+            // Update sentence display
+            document.getElementById('current-sentence').textContent = `Current Sentence: ${data.current_sentence}`;
+            
+            // Check for new letters to add
+            if (data.left_hand !== lastLeftHand && data.left_hand !== 'No detection') {
+              await updateSentence('add_letter', data.left_hand);
+              lastLeftHand = data.left_hand;
             }
+            if (data.right_hand !== lastRightHand && data.right_hand !== 'No detection') {
+              await updateSentence('add_letter', data.right_hand);
+              lastRightHand = data.right_hand;
+            }
+          } catch (err) {
+            console.error('Error fetching detections:', err);
           }
-          setInterval(fetchLetter, 1000); // Poll every second
-          fetchLetter(); // Initial load
-          </script>
-        <span>Try to make different signs from your hands.</span>
+        }
+
+        async function updateSentence(action, letter = '') {
+          try {
+            const response = await fetch('/update_sentence', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ action, letter }),
+            });
+            const data = await response.json();
+            if (data.success) {
+              document.getElementById('current-sentence').textContent = `Current Sentence: ${data.sentence}`;
+            }
+          } catch (err) {
+            console.error('Error updating sentence:', err);
+          }
+        }
+
+        setInterval(fetchDetections, 1000); // Poll every second
+        fetchDetections(); // Initial load
+        </script>
+        <span>Try to make signs with both hands to form sentences.</span>
       </div>
 
       <hr />
