@@ -39,21 +39,30 @@
           onerror="this.onerror=null; this.src='https://via.placeholder.com/640x480?text=Stream+not+available';"
         />
 
-        <div class="detection-boxes" style="display: flex; justify-content: space-around; margin: 15px 0;">
-          <div id="left-hand-box" style="font-size: 20px; font-weight: bold; color: #ff0000;">
-            Left Hand: No detection
+        <div class="detection-panel" style="background-color: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h3 style="text-align: center; margin-bottom: 15px; color: #333;">Detected Signs</h3>
+          <div class="detection-boxes" style="display: flex; justify-content: center; gap: 40px; margin-bottom: 20px;">
+            <div class="hand-box" style="text-align: center; padding: 15px; border-radius: 8px; min-width: 200px; background: #fff; border: 2px solid #ff0000;">
+              <div style="font-size: 16px; color: #666;">Left Hand</div>
+              <div id="left-hand-box" style="font-size: 36px; font-weight: bold; color: #ff0000; margin-top: 5px;">
+                -
+              </div>
+            </div>
+            <div class="hand-box" style="text-align: center; padding: 15px; border-radius: 8px; min-width: 200px; background: #fff; border: 2px solid #00ff00;">
+              <div style="font-size: 16px; color: #666;">Right Hand</div>
+              <div id="right-hand-box" style="font-size: 36px; font-weight: bold; color: #00ff00; margin-top: 5px;">
+                -
+              </div>
+            </div>
           </div>
-          <div id="right-hand-box" style="font-size: 20px; font-weight: bold; color: #00ff00;">
-            Right Hand: No detection
-          </div>
-        </div>
-
-        <div id="sentence-box" style="margin: 15px 0; font-size: 24px; font-weight: bold; color: #333;">
-          <div id="current-sentence">Current Sentence: </div>
-          <div class="sentence-controls" style="margin-top: 10px;">
-            <button onclick="updateSentence('add_space')" style="margin: 0 5px;">Add Space</button>
-            <button onclick="updateSentence('backspace')" style="margin: 0 5px;">Backspace</button>
-            <button onclick="updateSentence('clear')" style="margin: 0 5px;">Clear</button>
+          
+          <div id="sentence-box" style="background: #fff; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <div id="current-sentence" style="font-size: 24px; font-weight: bold; color: #333; margin-bottom: 15px; text-align: center;">Current Sentence: </div>
+            <div class="sentence-controls" style="display: flex; justify-content: center; gap: 10px;">
+              <button onclick="updateSentence('add_space')" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Space</button>
+              <button onclick="updateSentence('backspace')" style="padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">Backspace</button>
+              <button onclick="updateSentence('clear')" style="padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear</button>
+            </div>
           </div>
         </div>
 
@@ -67,8 +76,8 @@
             const data = await response.json();
             
             // Update hand detection displays
-            document.getElementById('left-hand-box').textContent = `Left Hand: ${data.left_hand}`;
-            document.getElementById('right-hand-box').textContent = `Right Hand: ${data.right_hand}`;
+            document.getElementById('left-hand-box').textContent = data.left_hand === 'No detection' ? '-' : data.left_hand;
+            document.getElementById('right-hand-box').textContent = data.right_hand === 'No detection' ? '-' : data.right_hand;
             
             // Update sentence display
             document.getElementById('current-sentence').textContent = `Current Sentence: ${data.current_sentence}`;
